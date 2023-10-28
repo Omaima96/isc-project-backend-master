@@ -1,0 +1,59 @@
+server:
+  port: 8888
+  shutdown: graceful
+spring:
+  zipkin:
+    base-url: http://zipkin:9411/
+  application:
+    name: config
+  cloud:
+    config:
+      server:
+        git:
+          uri: https://bitbucket.org/contrader_projects/config
+          searchPaths: '{application}'
+          username: bitbucketconfigcontrader
+          password: ATBB8g3PjG6Ts9swUQc5S3D8HLTb76F8BD56
+          refreshRate: 15
+          default-label: master
+
+eureka:
+  client:
+    region: default
+    registryFetchIntervalSeconds: 5
+    serviceUrl:
+      defaultZone: http://mydely:4RKsJQfuvvuG@localhost:8761/eureka/
+  instance:
+    metadata-map:
+      "prometheus.scrape": "true"
+      "prometheus.path": "/actuator/prometheus"
+      "prometheus.port": "8889"
+      "sys.module": "core"
+
+management:
+  security:
+    enabled: false
+  server:
+    port: 8889
+  health:
+    config:
+      enabled: false
+    circuitbreakers:
+      enabled: true
+  endpoint:
+    health:
+      show-details: WHEN_AUTHORIZED
+      prometheus:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+    #logging:
+    #level:
+    # root: DEBUG

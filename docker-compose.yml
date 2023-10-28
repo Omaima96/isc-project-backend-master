@@ -1,0 +1,187 @@
+version: '3.9'
+
+x-common-variables: &env
+  _JAVA_OPTIONS: -Xmx512m -Xms256m
+  SPRING_PROFILES_ACTIVE: ${PROFILES:-default}
+  SPRING_CONFIG_IMPORT: configserver:http://${CONFIG_SERVER_USERNAME:-isc}:${CONFIG_SERVER_PASSWORD:-4RKsJQfuvvuG}@config:8888/
+
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    mem_limit: 256M
+    mem_reservation: 128M
+    user: root
+    restart: always
+    networks:
+      - monitoring
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus-data:/data/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=3d'
+      - '--storage.tsdb.retention.size=1024MB'
+
+ # grafana:
+ #   image: grafana/grafana-oss
+ #   container_name: grafana
+  #  mem_limit: 256M
+  #  mem_reservation: 128M
+ #   user: root
+ #   restart: always
+ #   environment:
+#      - GF_SECURITY_ADMIN_PASSWORD=admin
+#    volumes:
+#      - grafana-data:/var/lib/grafana
+ #   networks:
+#      - monitoring
+#    depends_on:
+#      - prometheus
+#    ports:
+#      - "3001:3000"
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    mem_limit: 1024M
+    mem_reservation: 512M
+    healthcheck:
+      test: busybox wget -qO - http://localhost:9411/health | grep "UP" || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - backend
+    restart: always
+    ports:
+      - "9414:9411"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    mem_limit: 512M
+    mem_reservation: 128M
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: always
+    networks:
+     - backend
+    ports:
+      - '5674:5672'
+      - '15674:15672'
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=S8b?hRqlfi!1N
+
+  eureka:
+    image: ${DOCKER_REPOSITORY}/isc/eureka
+    container_name: eureka
+    mem_limit: 512M
+    mem_reservation: 128M
+    restart: unless-stopped
+    ports:
+      - '8763:8761'
+    networks:
+      - backend
+      - monitoring
+    healthcheck:
+      test: busybox wget -qO - http://localhost:8761/actuator/health | grep "UP" || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  config:
+    image: ${DOCKER_REPOSITORY}/isc/config
+    container_name: config
+    mem_limit: 512M
+    mem_reservation: 128M
+    restart: unless-stopped
+    networks:
+      - backend
+    ports:
+      - '8891:8888'
+    environment:
+      _JAVA_OPTIONS: -Xmx512m -Xms256m
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://isc:4RKsJQfuvvuG@eureka:8761/eureka
+    healthcheck:
+      test: busybox wget -qO - http://localhost:8889/actuator/health | grep "UP" || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    depends_on:
+      eureka:
+        condition: service_healthy
+
+  gateway:
+    image: ${DOCKER_REPOSITORY}/isc/gateway
+    container_name: gateway
+    mem_limit: 1024M
+    mem_reservation: 128M
+    restart: unless-stopped
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://isc:4RKsJQfuvvuG@eureka:8761/eureka
+      <<: *env
+    ports:
+      - '8070:8080'
+    networks:
+      - backend
+      - frontend
+      - monitoring
+    healthcheck:
+      test: busybox wget -qO - http://localhost:8081/actuator/health | grep "UP" || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    depends_on:
+      eureka:
+        condition: service_healthy
+      config:
+        condition: service_healthy
+
+  # Database Service (Mysql)
+  db_isc:
+    image: mysql
+    container_name: db_isc
+    ports:
+      - "3320:3306"
+    restart: always
+    networks:
+      - service
+    environment:
+      MYSQL_DATABASE: isc
+      MYSQL_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
+    command: mysqld --lower_case_table_names=1 --skip-ssl --character_set_server=utf8mb4 --explicit_defaults_for_timestamp
+    volumes:
+      - mysql:/var/lib/mysql
+      #- ./database/db.sql:/docker-entrypoint-initdb.d/db.sql
+    healthcheck:
+      test: [ "CMD", 'mysqladmin', 'ping', '-h', 'localhost', '-u', 'root', '-p$MYSQL_ROOT_PASSWORD' ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mysql: { }
+  prometheus-data: { }
+  grafana-data: { }
+
+networks:
+  service:
+    name: isc_backend_authentication
+  backend:
+    name: isc_backend
+  frontend:
+    name: isc_frontend
+  monitoring:
+    name: isc_monitoring
+
+#
+#docker-compose up
+#docker-compose down (stop all the application)
+#docker exec -ti nameContainer /bin/bash
+#docker-compose down --remove-orphans -v (remove all images, container ,and volume)
