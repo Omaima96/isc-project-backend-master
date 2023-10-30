@@ -10,9 +10,9 @@ spring:
     config:
       server:
         git:
-          uri: https://bitbucket.org/contrader_projects/config
+          uri: https://bitbucket.org/isc_project/config
           searchPaths: '{application}'
-          username: bitbucketconfigcontrader
+          username: bitbucketconfigisc
           password: ATBB8g3PjG6Ts9swUQc5S3D8HLTb76F8BD56
           refreshRate: 15
           default-label: master
@@ -22,7 +22,7 @@ eureka:
     region: default
     registryFetchIntervalSeconds: 5
     serviceUrl:
-      defaultZone: http://mydely:4RKsJQfuvvuG@localhost:8761/eureka/
+      defaultZone: http://isc:4RKsJQfuvvuG@localhost:8761/eureka/
   instance:
     metadata-map:
       "prometheus.scrape": "true"
