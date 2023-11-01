@@ -1,9 +1,0 @@
-spring:
-  application:
-    name: gateway
-  config:
-    import: ${SPRING_CONFIG_IMPORT:configserver:http://isc:4RKsJQfuvvuG@localhost:8888/}
-
-logging:
-  level:
-    root: DEBUG
