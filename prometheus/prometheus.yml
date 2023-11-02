@@ -1,0 +1,34 @@
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: isc
+    metrics_path: '/actuator/com.isc.master.prometheus'
+    scrape_interval: 5s
+    scrape_timeout: 4s
+    eureka_sd_configs:
+      - server: 'http://eureka:8761/eureka'
+        basic_auth:
+          username: 'isc'
+          password: '4RKsJQfuvvuG'
+    relabel_configs:
+      #Path to rewrite metrics
+      - source_labels: [ "__meta_eureka_app_instance_metadata_prometheus_path" ]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      #        #Add a custom label sys_ Its value is obtained from the configuration Eureka
+      - source_labels: [ "__meta_eureka_app_instance_metadata_sys_module" ]
+        action: replace
+        target_label: sys_module
+        regex: (.+)
+      #        #Override management port
+      - source_labels: [ __address__, __meta_eureka_app_instance_metadata_prometheus_port ]
+        action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        target_label: __address__
+      - source_labels: [ __meta_eureka_app_name, __meta_eureka_app_instance_hostname ]
+        action: replace
+        regex: (.+)
+        replacement: $1-$2
+        target_label: instance

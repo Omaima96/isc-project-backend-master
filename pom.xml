@@ -16,9 +16,9 @@
     </parent>
 
     <properties>
-        <java.version>1.8</java.version>
+        <java.version>17</java.version>
         <spring-cloud.version>2021.0.3</spring-cloud.version>
-        <jib.base.image>openjdk:17-alpine</jib.base.image>
+        <jib.base.image>openjdk:17-oracle</jib.base.image>
         <DOCKER_GOAL>dockerBuild</DOCKER_GOAL>
         <DOCKER_REPOSITORY>core</DOCKER_REPOSITORY>
     </properties>
